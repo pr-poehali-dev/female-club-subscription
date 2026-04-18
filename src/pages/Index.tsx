@@ -1,16 +1,37 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
 const HERO_IMG = "https://cdn.poehali.dev/projects/3da5cd07-b830-44c9-b19b-a7cdc31cccb5/files/7aea5147-18e9-4ee7-bab7-cd6d8011f69b.jpg";
 const MASTER_IMG = "https://cdn.poehali.dev/projects/3da5cd07-b830-44c9-b19b-a7cdc31cccb5/files/86768983-c27f-43af-bd88-1f4924284a0b.jpg";
 
-type Section = "home" | "about" | "community" | "meetings" | "subscribe" | "cabinet";
+type Section = "home" | "about" | "community" | "meetings" | "subscribe" | "cabinet" | "chat";
+
+interface ChatMessage {
+  id: number;
+  author: string;
+  initial: string;
+  role: string;
+  text: string;
+  time: string;
+  mine?: boolean;
+}
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  { id: 1, author: "Анна К.", initial: "А", role: "Предприниматель", text: "Всем доброе утро! Кто-нибудь был на вчерашней встрече с Еленой? Очень хотела, но не смогла подключиться 😔", time: "09:14" },
+  { id: 2, author: "Мария Л.", initial: "М", role: "Арт-директор", text: "Была! Это было невероятно. Запись уже загружена в кабинет, не пропусти ✨", time: "09:22" },
+  { id: 3, author: "София Р.", initial: "С", role: "Коуч", text: "Согласна с Машей. Особенно часть про выстраивание границ в команде — прямо в точку попало.", time: "09:31" },
+  { id: 4, author: "Елена В.", initial: "Е", role: "Психолог", text: "Девочки, спасибо за тёплые слова 💛 Если есть вопросы — пишите, отвечу в течение дня.", time: "10:05" },
+  { id: 5, author: "Дарья М.", initial: "Д", role: "Юрист", text: "Елена, у меня уже есть вопрос 😄 Как вы рекомендуете работать с клиентами, которые постоянно переступают договорённости?", time: "10:18" },
+  { id: 6, author: "Ирина Т.", initial: "И", role: "Финансист", text: "Очень актуальная тема, Даша. Я со своей стороны могу добавить финансовый аспект — часто это связано с размытыми условиями в договоре.", time: "10:45" },
+  { id: 7, author: "Мария Л.", initial: "М", role: "Арт-директор", text: "Кстати, напоминаю: в следующую пятницу у нас встреча по нетворкингу. Запишитесь заранее, мест мало 🌿", time: "11:03" },
+];
 
 const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: "home", label: "Главная" },
   { id: "about", label: "О клубе" },
   { id: "meetings", label: "Встречи" },
   { id: "community", label: "Сообщество" },
+  { id: "chat", label: "Чат" },
   { id: "subscribe", label: "Подписка" },
 ];
 
@@ -56,6 +77,27 @@ const PLANS = [
 export default function Index() {
   const [active, setActive] = useState<Section>("home");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [chatInput, setChatInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (active === "chat") {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  }, [active, messages]);
+
+  const sendMessage = () => {
+    const text = chatInput.trim();
+    if (!text) return;
+    const now = new Date();
+    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: prev.length + 1, author: "Вы", initial: "В", role: "Участница", text, time, mine: true },
+    ]);
+    setChatInput("");
+  };
 
   const navigate = (section: Section) => {
     setActive(section);
@@ -484,6 +526,130 @@ export default function Index() {
                     <span className="text-sm" style={{ color: "var(--warm-mid)" }}>{f.text}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== CHAT ==================== */}
+        {active === "chat" && (
+          <div className="max-w-6xl mx-auto px-6 py-24">
+            <div className="flex items-end justify-between mb-10 animate-fade-up opacity-0-init">
+              <div>
+                <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: "var(--taupe)" }}>Закрытый</p>
+                <h2 className="font-display text-5xl font-light" style={{ color: "var(--graphite)" }}>
+                  Чат <em>участниц</em>
+                </h2>
+              </div>
+              <div className="hidden md:flex items-center gap-2 text-xs tracking-wider uppercase" style={{ color: "var(--taupe)" }}>
+                <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
+                {MEMBERS.length} онлайн
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-[1fr_260px] gap-px" style={{ backgroundColor: "rgba(200,184,168,0.2)" }}>
+              {/* Messages area */}
+              <div className="flex flex-col" style={{ backgroundColor: "var(--cream)" }}>
+                <div
+                  className="flex-1 overflow-y-auto p-6 space-y-6 animate-fade-up opacity-0-init delay-100"
+                  style={{ minHeight: "480px", maxHeight: "520px" }}
+                >
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-4 ${msg.mine ? "flex-row-reverse" : ""}`}
+                    >
+                      {!msg.mine && (
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ backgroundColor: "rgba(200,184,168,0.25)" }}
+                        >
+                          <span className="font-display text-base" style={{ color: "var(--warm-mid)" }}>{msg.initial}</span>
+                        </div>
+                      )}
+                      <div className={`flex flex-col max-w-[75%] ${msg.mine ? "items-end" : ""}`}>
+                        {!msg.mine && (
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-xs font-medium" style={{ color: "var(--graphite)" }}>{msg.author}</span>
+                            <span className="text-xs" style={{ color: "var(--taupe)" }}>{msg.role}</span>
+                          </div>
+                        )}
+                        <div
+                          className="px-4 py-3 text-sm leading-relaxed"
+                          style={{
+                            backgroundColor: msg.mine ? "var(--graphite)" : "rgba(200,184,168,0.15)",
+                            color: msg.mine ? "var(--cream)" : "var(--graphite)",
+                            borderRadius: msg.mine ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                          }}
+                        >
+                          {msg.text}
+                        </div>
+                        <span className="text-xs mt-1" style={{ color: "var(--taupe)" }}>{msg.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div
+                  className="flex items-center gap-3 px-6 py-4 animate-fade-up opacity-0-init delay-200"
+                  style={{ borderTop: "1px solid rgba(200,184,168,0.3)" }}
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="Написать в чат..."
+                    className="flex-1 bg-transparent text-sm focus:outline-none"
+                    style={{ color: "var(--graphite)" }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    className="w-9 h-9 flex items-center justify-center flex-shrink-0 transition-colors duration-200"
+                    style={{ backgroundColor: "var(--graphite)", color: "var(--cream)", borderRadius: "50%" }}
+                  >
+                    <Icon name="ArrowUp" size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Participants sidebar */}
+              <div className="p-6" style={{ backgroundColor: "rgba(247,244,240,0.7)" }}>
+                <p className="text-xs tracking-[0.3em] uppercase mb-5" style={{ color: "var(--taupe)" }}>Участницы</p>
+                <div className="space-y-4">
+                  {MEMBERS.map((m) => (
+                    <div key={m.name} className="flex items-center gap-3">
+                      <div className="relative">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: "rgba(200,184,168,0.25)" }}
+                        >
+                          <span className="font-display text-sm" style={{ color: "var(--warm-mid)" }}>{m.initial}</span>
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2" style={{ borderColor: "rgba(247,244,240,0.7)" }} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium leading-none" style={{ color: "var(--graphite)" }}>{m.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--taupe)" }}>{m.role}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(200,184,168,0.3)" }}>
+                  <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: "var(--taupe)" }}>Темы чата</p>
+                  {["Общий", "Встречи", "Бизнес", "Личное"].map((tag) => (
+                    <button
+                      key={tag}
+                      className="block w-full text-left text-xs px-3 py-2 mb-1 transition-colors duration-150"
+                      style={{ color: tag === "Общий" ? "var(--graphite)" : "var(--warm-mid)", backgroundColor: tag === "Общий" ? "rgba(200,184,168,0.2)" : "transparent" }}
+                    >
+                      # {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
